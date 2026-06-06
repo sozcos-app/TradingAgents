@@ -6,6 +6,7 @@
 """
 
 import asyncio
+import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -22,6 +23,7 @@ from tradingagents.utils.logging_manager import get_logger
 from app.utils.timezone import now_tz
 
 logger = get_logger(__name__)
+logger.setLevel(logging.ERROR)
 
 # UTC+8 时区
 UTC_8 = timezone(timedelta(hours=8))

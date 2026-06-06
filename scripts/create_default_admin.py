@@ -26,7 +26,7 @@ from pymongo import MongoClient
 
 
 # 配置
-MONGO_URI = "mongodb://admin:tradingagents123@localhost:27017/tradingagentscn?authSource=admin"
+MONGO_URI = "mongodb://localhost:27017/tradingagentscn"
 DB_NAME = "tradingagentscn"
 
 

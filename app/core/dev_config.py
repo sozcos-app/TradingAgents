@@ -101,7 +101,10 @@ class DevConfig:
         """获取uvicorn配置"""
         # 统一禁用reload，避免日志配置冲突
         return {
-            "reload": False,  # 禁用自动重载，手动重启
+            "reload": True,  # 启用自动热重载
+            "reload_dirs": ["app"],
+            "reload_includes": ["*.py"],
+            "reload_excludes": ["*.pyc", "__pycache__", ".git", "*.log"],
             "log_level": cls.LOG_LEVEL,
             "access_log": cls.ACCESS_LOG,
             # 确保使用我们自定义的日志配置

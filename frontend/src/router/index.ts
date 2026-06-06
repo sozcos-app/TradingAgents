@@ -243,6 +243,65 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/calendar',
+    name: 'Calendar',
+    component: () => import('@/layouts/BasicLayout.vue'),
+    redirect: '/calendar/macro',
+    meta: {
+      title: '交易日历',
+      icon: 'Calendar',
+      requiresAuth: true,
+      transition: 'fade'
+    },
+    children: [
+      {
+        path: '',
+        name: 'CalendarHome',
+        component: () => import('@/views/Calendar/index.vue'),
+        meta: {
+          title: '交易日历',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'macro',
+        name: 'MacroView',
+        component: () => import('@/views/Calendar/index.vue'),
+        meta: {
+          title: '宏观感知',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'industry',
+        name: 'IndustryView',
+        component: () => import('@/views/Calendar/index.vue'),
+        meta: {
+          title: '行业景气',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'stock-health',
+        name: 'StockHealthView',
+        component: () => import('@/views/Calendar/index.vue'),
+        meta: {
+          title: '个股体检',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'events',
+        name: 'EventCalendarView',
+        component: () => import('@/views/Calendar/index.vue'),
+        meta: {
+          title: '事件日历',
+          requiresAuth: true
+        }
+      }
+    ]
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('@/layouts/BasicLayout.vue'),

@@ -369,6 +369,95 @@ class MultiSourceBasicsSyncService:
             # 无法识别的代码，返回原始代码（确保不为空）
             return code if code else ""
 
+    async def run_quick_sync(self, preferred_sources: List[str] = None) -> Dict[str, Any]:
+        """
+        快速同步：只拉取股票列表（代码、名称、行业）写入 DB，跳过日线数据。
+        用于启动时快速让应用可用，日线数据靠定时任务补充。
+        """
+        db = get_mongo_db()
+        try:
+            from app.services.data_sources.manager import DataSourceManager
+            manager = DataSourceManager()
+
+            # 获取股票列表
+            stock_df, source_used = await asyncio.to_thread(
+                manager.get_stock_list_with_fallback, preferred_sources
+            )
+            if stock_df is None or getattr(stock_df, "empty", True):
+                logger.warning("Quick sync: failed to fetch stock list")
+                return {"status": "failed", "message": "无法获取股票列表"}
+
+            total_stocks = len(stock_df)
+            logger.info(f"Quick sync: fetched {total_stocks} stocks from {source_used}")
+
+            # 只写入基础信息，不拉日线数据
+            ops = []
+            inserted = updated = errors = 0
+            batch_size = 500
+
+            for idx, (_, row) in enumerate(stock_df.iterrows(), 1):
+                try:
+                    name = row.get("name") or ""
+                    area = row.get("area") or ""
+                    industry = row.get("industry") or ""
+                    market = row.get("market") or ""
+                    list_date = row.get("list_date") or ""
+                    ts_code = row.get("ts_code") or ""
+
+                    if isinstance(ts_code, str) and "." in ts_code:
+                        code = ts_code.split(".")[0]
+                    else:
+                        symbol = row.get("symbol") or ""
+                        code = str(symbol).zfill(6) if symbol else ""
+
+                    if isinstance(ts_code, str):
+                        if ts_code.endswith(".SH"):
+                            sse = "上海证券交易所"
+                        elif ts_code.endswith(".SZ"):
+                            sse = "深圳证券交易所"
+                        elif ts_code.endswith(".BJ"):
+                            sse = "北京证券交易所"
+                        else:
+                            sse = "未知"
+                    else:
+                        sse = "未知"
+
+                    full_symbol = ts_code if ts_code else self._generate_full_symbol(code)
+                    data_source = source_used
+
+                    doc = {
+                        "code": code,
+                        "symbol": code,
+                        "name": name,
+                        "area": area,
+                        "industry": industry,
+                        "market": market,
+                        "list_date": list_date,
+                        "sse": sse,
+                        "full_symbol": full_symbol,
+                        "category": "stock_cn",
+                        "source": data_source,
+                        "updated_at": datetime.now(),
+                    }
+
+                    ops.append(UpdateOne({"code": code, "source": data_source}, {"$set": doc}, upsert=True))
+                except Exception as e:
+                    errors += 1
+
+                if len(ops) >= batch_size or idx == total_stocks:
+                    if ops:
+                        batch_inserted, batch_updated = await self._execute_bulk_write_with_retry(db, ops)
+                        inserted += batch_inserted
+                        updated += batch_updated
+                        ops = []
+
+            logger.info(f"Quick sync done: {total_stocks} stocks, inserted={inserted}, updated={updated}, errors={errors}")
+            return {"status": "success", "total": total_stocks, "inserted": inserted, "updated": updated}
+
+        except Exception as e:
+            logger.error(f"Quick sync failed: {e}")
+            return {"status": "failed", "message": str(e)}
+
 
 # 全局服务实例
 _multi_source_sync_service = None

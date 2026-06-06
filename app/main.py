@@ -69,6 +69,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from app.services.quotes_ingestion_service import QuotesIngestionService
 from app.routers import paper as paper_router
+from app.routers import calendar as calendar_router
 
 
 def get_version() -> str:
@@ -292,11 +293,11 @@ async def lifespan(app: FastAPI):
             preferred_sources = ["akshare", "baostock"]
             logger.info(f"📊 股票基础信息同步优先数据源: AKShare > BaoStock (Tushare已禁用)")
 
-        # 立即在启动后尝试一次（不阻塞）
-        async def run_sync_with_sources():
-            await multi_source_service.run_full_sync(force=False, preferred_sources=preferred_sources)
+        # 立即在启动后快速同步一次（只拉股票列表，不含日线数据，几秒完成）
+        async def run_quick_sync():
+            await multi_source_service.run_quick_sync(preferred_sources=preferred_sources)
 
-        asyncio.create_task(run_sync_with_sources())
+        asyncio.create_task(run_quick_sync())
 
         # 配置调度：优先使用 CRON，其次使用 HH:MM
         if settings.SYNC_STOCK_BASICS_ENABLED:
@@ -582,6 +583,12 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         # 关闭时清理
+        # 1. 取消所有后台 asyncio.Task，防止卡住进程
+        current_loop = asyncio.get_running_loop()
+        for task in asyncio.all_tasks(current_loop):
+            if task is not asyncio.current_task():
+                task.cancel()
+
         if scheduler:
             try:
                 scheduler.shutdown(wait=False)
@@ -728,6 +735,9 @@ app.include_router(financial_data.router, tags=["financial-data"])
 app.include_router(news_data.router, tags=["news-data"])
 app.include_router(social_media.router, tags=["social-media"])
 app.include_router(internal_messages.router, tags=["internal-messages"])
+
+# 交易日历模块
+app.include_router(calendar_router.router, prefix="/api", tags=["calendar"])
 
 
 @app.get("/")
