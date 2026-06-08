@@ -59,7 +59,8 @@
       "Bash(\"D:/coding/program-tools/anaconda/envs/tradingagents/python.exe\" -X utf8 -c \"import akshare as ak; import inspect; src = inspect.getsource\\(ak.rate_interbank\\); print\\(src[:3000]\\)\")",
       "Bash(PYTHONUTF8=1 \"D:/coding/program-tools/anaconda/envs/tradingagents/python.exe\":*)",
       "Bash(PYTHONUTF8=1 \"D:/coding/program-tools/anaconda/envs/tradingagents/python.exe\" -c:*)",
-      "Bash(PYTHONUTF8=1:*)"
+      "Bash(PYTHONUTF8=1:*)",
+      "Bash(find:*)"
     ]
   }
 }
