@@ -304,7 +304,7 @@ class DcfDataFetchService:
         shares_outstanding: Optional[float] = None
         stock_name: Optional[str] = None
 
-        # 个股信息（名称 + 市值 + 最新价）
+        # --- 策略1: stock_individual_info_em（东财个股信息，可能因网络不可达） ---
         try:
             info_result = await asyncio.to_thread(
                 lambda: ak.stock_individual_info_em(symbol=pure_code)
@@ -316,9 +316,49 @@ class DcfDataFetchService:
                 current_price = _safe_float(info_dict.get("最新"))
                 logger.info(f"个股信息获取成功: name={stock_name}, cap={total_market_cap}, price={current_price}")
         except Exception as e:
-            logger.warning(f"个股信息获取失败: {e}")
+            logger.warning(f"个股信息获取失败(em): {e}")
 
-        # 实时行情兜底（用 em 接口 stock_zh_a_spot_em，包含总市值和最新价列）
+        # --- 策略2: stock_zh_a_daily（sina，稳定可用，返回收盘价+流通股本） ---
+        if current_price is None:
+            try:
+                import datetime
+                end_date = datetime.date.today().strftime("%Y%m%d")
+                start_date = (datetime.date.today() - datetime.timedelta(days=10)).strftime("%Y%m%d")
+                # 确定 market 前缀
+                market_prefix = "sz" if pure_code.startswith(("0", "3")) else "sh"
+                hist_df = await asyncio.to_thread(
+                    lambda: ak.stock_zh_a_daily(
+                        symbol=f"{market_prefix}{pure_code}",
+                        start_date=start_date, end_date=end_date, adjust="qfq"
+                    )
+                )
+                if isinstance(hist_df, pd.DataFrame) and not hist_df.empty:
+                    last_row = hist_df.iloc[-1]
+                    current_price = _safe_float(last_row["close"])
+                    # outstanding_share 是流通股本，可用于估算市值
+                    if shares_outstanding is None and "outstanding_share" in hist_df.columns:
+                        shares_outstanding = _safe_float(last_row["outstanding_share"])
+                    logger.info(f"sina daily 获取成功: price={current_price}, shares={shares_outstanding}")
+            except Exception as e:
+                logger.warning(f"sina daily 获取失败: {e}")
+
+        # --- 策略3: 从资产负债表取"实收资本(或股本)"作为总股本 ---
+        if not balance_df.empty:
+            cap_col = "实收资本(或股本)" if "实收资本(或股本)" in balance_df.columns else None
+            if cap_col:
+                latest_cap = balance_df[cap_col].iloc[0]
+                total_shares = _safe_float(latest_cap)
+                if total_shares and total_shares > 0:
+                    # 用实收资本（总股本）覆盖流通股本
+                    shares_outstanding = total_shares
+                    logger.info(f"从资产负债表取总股本: {shares_outstanding}")
+
+        # --- 计算总市值 ---
+        if total_market_cap is None and current_price and current_price > 0 and shares_outstanding and shares_outstanding > 0:
+            total_market_cap = current_price * shares_outstanding
+            logger.info(f"由 价格*股本 算出市值: {current_price} * {shares_outstanding} = {total_market_cap}")
+
+        # --- 策略4: 东财全市场行情兜底（同时获取价格和市值） ---
         if total_market_cap is None or current_price is None:
             try:
                 spot_result = await asyncio.to_thread(lambda: ak.stock_zh_a_spot_em())
@@ -334,37 +374,6 @@ class DcfDataFetchService:
                             logger.info(f"东货行情兜底: price={current_price}, cap={total_market_cap}")
             except Exception as e:
                 logger.warning(f"实时行情(东财)获取失败: {e}")
-
-        # 历史行情兜底（仅取最近1天收盘价）
-        if current_price is None:
-            try:
-                import datetime
-                end_date = datetime.date.today().strftime("%Y%m%d")
-                start_date = (datetime.date.today() - datetime.timedelta(days=10)).strftime("%Y%m%d")
-                hist_df = await asyncio.to_thread(
-                    lambda: ak.stock_zh_a_hist(
-                        symbol=pure_code, period="daily",
-                        start_date=start_date, end_date=end_date, adjust="qfq"
-                    )
-                )
-                if isinstance(hist_df, pd.DataFrame) and not hist_df.empty:
-                    current_price = _safe_float(hist_df.iloc[-1]["收盘"])
-                    logger.info(f"历史行情兜底获取收盘价: {current_price}")
-            except Exception as e:
-                logger.warning(f"历史行情兜底失败: {e}")
-
-        # 从资产负债表取"实收资本(或股本)"作为总股本，再算市值
-        if shares_outstanding is None and not balance_df.empty:
-            cap_col = "实收资本(或股本)" if "实收资本(或股本)" in balance_df.columns else None
-            if cap_col:
-                latest_cap = balance_df[cap_col].iloc[0]
-                shares_outstanding = _safe_float(latest_cap)
-                if shares_outstanding and shares_outstanding > 0 and current_price:
-                    total_market_cap = shares_outstanding * current_price
-                logger.info(f"从资产负债表取总股本: {shares_outstanding}, 算出市值: {total_market_cap}")
-
-        if total_market_cap is None and current_price and current_price > 0 and shares_outstanding:
-            total_market_cap = shares_outstanding * current_price
 
         logger.info(
             f"最终数据汇总: stock={stock_code}, name={stock_name}, "

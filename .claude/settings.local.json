@@ -66,7 +66,9 @@
       "Bash(py:*)",
       "Bash(curl:*)",
       "mcp__web-reader__webReader",
-      "Bash(conda activate:*)"
+      "Bash(conda activate:*)",
+      "Bash(conda run:*)",
+      "Bash(D:/coding/program-tools/anaconda/envs/tradingagents/python.exe:*)"
     ]
   }
 }
