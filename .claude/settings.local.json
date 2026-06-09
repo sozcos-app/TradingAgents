@@ -60,7 +60,13 @@
       "Bash(PYTHONUTF8=1 \"D:/coding/program-tools/anaconda/envs/tradingagents/python.exe\":*)",
       "Bash(PYTHONUTF8=1 \"D:/coding/program-tools/anaconda/envs/tradingagents/python.exe\" -c:*)",
       "Bash(PYTHONUTF8=1:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(tree:*)",
+      "Bash(py:*)",
+      "Bash(curl:*)",
+      "mcp__web-reader__webReader",
+      "Bash(conda activate:*)"
     ]
   }
 }

@@ -47,6 +47,11 @@
       <template #title>交易日历</template>
     </el-menu-item>
 
+    <el-menu-item index="/dcf">
+      <el-icon><Money /></el-icon>
+      <template #title>DCF估值</template>
+    </el-menu-item>
+
     <el-menu-item index="/paper">
       <el-icon><CreditCard /></el-icon>
       <template #title>模拟交易</template>
@@ -118,7 +123,8 @@ import {
   Setting,
   InfoFilled,
   CreditCard,
-  Calendar
+  Calendar,
+  Money
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

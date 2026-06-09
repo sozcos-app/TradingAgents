@@ -70,6 +70,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.services.quotes_ingestion_service import QuotesIngestionService
 from app.routers import paper as paper_router
 from app.routers import calendar as calendar_router
+from app.routers import dcf as dcf_router
 
 
 def get_version() -> str:
@@ -738,6 +739,9 @@ app.include_router(internal_messages.router, tags=["internal-messages"])
 
 # 交易日历模块
 app.include_router(calendar_router.router, prefix="/api", tags=["calendar"])
+
+# DCF股票估值模块
+app.include_router(dcf_router.router, prefix="/api", tags=["dcf"])
 
 
 @app.get("/")

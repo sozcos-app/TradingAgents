@@ -243,6 +243,29 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/dcf',
+    name: 'Dcf',
+    component: () => import('@/layouts/BasicLayout.vue'),
+    redirect: '/dcf/valuate',
+    meta: {
+      title: 'DCF估值',
+      icon: 'Money',
+      requiresAuth: true,
+      transition: 'fade'
+    },
+    children: [
+      {
+        path: 'valuate',
+        name: 'DcfValuate',
+        component: () => import('@/views/Dcf/index.vue'),
+        meta: {
+          title: 'DCF估值计算',
+          requiresAuth: true
+        }
+      }
+    ]
+  },
+  {
     path: '/calendar',
     name: 'Calendar',
     component: () => import('@/layouts/BasicLayout.vue'),
